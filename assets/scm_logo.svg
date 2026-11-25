@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="12%" y1="6%" x2="88%" y2="94%">
+      <stop offset="0%" stop-color="#111827" />
+      <stop offset="55%" stop-color="#171936" />
+      <stop offset="100%" stop-color="#1e1b4b" />
+    </linearGradient>
+
+    <radialGradient id="coreGlow" cx="50%" cy="44%" r="52%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.16" />
+      <stop offset="55%" stop-color="#a855f7" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#090d16" stop-opacity="0" />
+    </radialGradient>
+
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+
+    <linearGradient id="bevelLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22" />
+      <stop offset="45%" stop-color="#38bdf8" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#a855f7" stop-opacity="0.03" />
+    </linearGradient>
+
+    <linearGradient id="innerPlate" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" stop-opacity="0.72" />
+      <stop offset="100%" stop-color="#13112b" stop-opacity="0.86" />
+    </linearGradient>
+
+    <linearGradient id="camFill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.18" />
+      <stop offset="100%" stop-color="#a855f7" stop-opacity="0.14" />
+    </linearGradient>
+
+    <clipPath id="shieldClip">
+      <path d="M256 32 L346 72 L426 98 L426 226 C426 336 352 428 256 480 C160 428 86 336 86 226 L86 98 L166 72 Z" />
+    </clipPath>
+  </defs>
+
+  
+  <g clip-path="url(#shieldClip)">
+    <rect x="70" y="24" width="372" height="464" fill="url(#bg)" />
+    <rect x="70" y="24" width="372" height="464" fill="url(#coreGlow)" />
+
+    
+    <polygon points="86,190 426,64 426,136 86,262" fill="#ffffff" fill-opacity="0.025" />
+    <polygon points="86,305 426,178 426,214 86,341" fill="#38bdf8" fill-opacity="0.025" />
+
+    
+    <path d="M256 54 L334 88 L404 111 L404 222 C404 318 339 399 256 446 C173 399 108 318 108 222 L108 111 L178 88 Z" fill="url(#innerPlate)" stroke="url(#bevelLight)" stroke-width="3" />
+
+    
+    <line x1="108" y1="111" x2="132" y2="122" stroke="url(#accent)" stroke-width="2" stroke-opacity="0.35" />
+    <line x1="404" y1="111" x2="380" y2="122" stroke="url(#accent)" stroke-width="2" stroke-opacity="0.35" />
+    <line x1="256" y1="32" x2="256" y2="54" stroke="url(#accent)" stroke-width="2.5" stroke-opacity="0.45" />
+    <line x1="256" y1="446" x2="256" y2="480" stroke="url(#accent)" stroke-width="2.5" stroke-opacity="0.45" />
+
+    <circle cx="126" cy="124" r="4.5" fill="#1e293b" stroke="url(#accent)" stroke-width="2" stroke-opacity="0.55" />
+    <circle cx="386" cy="124" r="4.5" fill="#1e293b" stroke="url(#accent)" stroke-width="2" stroke-opacity="0.55" />
+    <circle cx="126" cy="224" r="4.5" fill="#1e293b" stroke="url(#accent)" stroke-width="2" stroke-opacity="0.45" />
+    <circle cx="386" cy="224" r="4.5" fill="#1e293b" stroke="url(#accent)" stroke-width="2" stroke-opacity="0.45" />
+  </g>
+
+  
+  <path d="M256 32 L346 72 L426 98 L426 226 C426 336 352 428 256 480 C160 428 86 336 86 226 L86 98 L166 72 Z" fill="none" stroke="url(#accent)" stroke-width="13" stroke-linejoin="round" />
+  <path d="M256 44 L340 81 L414 105 L414 224 C414 328 344 416 256 465 C168 416 98 328 98 224 L98 105 L172 81 Z" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="2.5" stroke-linejoin="round" />
+
+  
+  <text x="256" y="156" text-anchor="middle" dominant-baseline="central" fill="url(#accent)" stroke="#090d16" stroke-width="5" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="96" font-weight="900" letter-spacing="5">SCM</text>
+
+  
+  <g transform="translate(0, 14)">
+    
+    <path d="M214 212 L226 190 H286 L298 212 Z" fill="url(#camFill)" stroke="url(#accent)" stroke-width="5" stroke-linejoin="round" />
+    
+    <rect x="156" y="212" width="200" height="118" rx="22" fill="url(#camFill)" stroke="url(#accent)" stroke-width="6" />
+    
+    <circle cx="256" cy="271" r="38" fill="#0f172a" fill-opacity="0.55" stroke="url(#accent)" stroke-width="6" />
+    <circle cx="256" cy="271" r="18" fill="none" stroke="url(#accent)" stroke-width="4" />
+  </g>
+
+  
+  <g stroke="url(#accent)" stroke-width="7" stroke-linecap="round">
+    <line x1="170" y1="378" x2="170" y2="394" />
+    <line x1="194" y1="368" x2="194" y2="404" />
+    <line x1="218" y1="358" x2="218" y2="414" />
+    <line x1="242" y1="370" x2="242" y2="402" />
+    <line x1="256" y1="362" x2="256" y2="410" />
+    <line x1="270" y1="370" x2="270" y2="402" />
+    <line x1="294" y1="358" x2="294" y2="414" />
+    <line x1="318" y1="368" x2="318" y2="404" />
+    <line x1="342" y1="378" x2="342" y2="394" />
+  </g>
+</svg>
