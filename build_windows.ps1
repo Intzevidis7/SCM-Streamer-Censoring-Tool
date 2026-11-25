@@ -16,14 +16,34 @@ if ($LASTEXITCODE -ne 0 -or -not $voskDir -or -not (Test-Path -LiteralPath $vosk
 $voskDll = Join-Path $voskDir 'libvosk.dll'
 if (-not (Test-Path -LiteralPath $voskDll)) { throw "Missing Vosk DLL: $voskDll" }
 Write-Host "Bundling Vosk DLL: $voskDll"
-& $python -m PyInstaller --clean --noconfirm --onedir --windowed --name SCM --icon "$PSScriptRoot\app.ico" --add-binary "${voskDll}:vosk" --hidden-import keyword_audio_detector --collect-all torch --collect-all transformers app.py
+
+if ((Test-Path -LiteralPath 'yoloe-11l-seg.pt') -and (-not (Test-Path -LiteralPath 'yoloe_text_pe.pt'))) {
+    Write-Host 'Precomputing YOLOE text embeddings (yoloe_text_pe.pt)...'
+    & $python -c "import torch; from vision_detector import VisionDetector; from ultralytics import YOLO; m = YOLO('yoloe-11l-seg.pt'); pe = m.get_text_pe(VisionDetector.ALL_PROMPTS); torch.save({'prompts': VisionDetector.ALL_PROMPTS, 'pe': pe}, 'yoloe_text_pe.pt')"
+}
+
+$addDataArgs = @()
+foreach ($dataFile in 'bad_words.txt','bad_words_el.txt','bad_words_en.txt','bad_words_greeklish.txt','music_whitelist.txt','app.ico','yoloe_text_pe.pt') {
+    if (Test-Path -LiteralPath $dataFile) {
+        $addDataArgs += @('--add-data', "${dataFile};.")
+    }
+}
+
+& $python -m PyInstaller --clean --noconfirm --onedir --windowed --name SCM --icon "$PSScriptRoot\app.ico" --add-binary "${voskDll}:vosk" @addDataArgs --hidden-import keyword_audio_detector --collect-all torch --collect-all torchvision --collect-all transformers --collect-all nudenet --collect-all clip app.py
 if ($LASTEXITCODE -ne 0) { throw 'GUI build failed.' }
 $bundledDll = Join-Path $PSScriptRoot 'dist\SCM\_internal\vosk\libvosk.dll'
 if (-not (Test-Path -LiteralPath $bundledDll)) { throw "Bundled DLL not found: $bundledDll" }
 & $python -m PyInstaller --clean --noconfirm --onefile --console --name SCM-Models --icon "$PSScriptRoot\app.ico" models_setup.py
 if ($LASTEXITCODE -ne 0) { throw 'Model downloader build failed.' }
 Copy-Item -LiteralPath 'dist\SCM-Models.exe' -Destination 'dist\SCM\SCM-Models.exe' -Force
-foreach ($wordList in 'bad_words.txt','bad_words_el.txt','bad_words_en.txt','bad_words_greeklish.txt') { Copy-Item -LiteralPath $wordList -Destination (Join-Path 'dist\SCM' $wordList) -Force }
+foreach ($dataFile in 'bad_words.txt','bad_words_el.txt','bad_words_en.txt','bad_words_greeklish.txt','music_whitelist.txt','app.ico','yoloe_text_pe.pt') {
+    if (Test-Path -LiteralPath $dataFile) {
+        Copy-Item -LiteralPath $dataFile -Destination (Join-Path 'dist\SCM' $dataFile) -Force
+    }
+}
+if (Test-Path -LiteralPath 'yoloe-11l-seg.pt') {
+    Copy-Item -LiteralPath 'yoloe-11l-seg.pt' -Destination 'dist\SCM\yoloe-11l-seg.pt' -Force
+}
 
 $v4Candidates = @(
     (Join-Path $PSScriptRoot 'keyword_lab\runs\wordfocused_xlsr_v4_context\model.pt'),

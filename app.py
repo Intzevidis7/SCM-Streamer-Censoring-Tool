@@ -109,7 +109,7 @@ class GUI:
         self.root = root
         root.title('Streamer Censoring Multitool (SCM) — AI Streamer Guard')
         try:
-            ico = BUNDLE_DIR / 'app.ico' if (BUNDLE_DIR / 'app.ico').exists() else ROOT / 'app.ico'
+            ico = ROOT / 'app.ico' if (ROOT / 'app.ico').exists() else BUNDLE_DIR / 'app.ico'
             root.iconbitmap(str(ico))
         except tk.TclError:
             pass
@@ -121,6 +121,7 @@ class GUI:
         self.risk_manager = None
         self.vision_detector = None
         self.music_detector = None
+        self.vision_stopping = threading.Event()
 
         self.inputs, self.outputs, self.saved = {}, {}, {}
         self.mic, self.output = tk.StringVar(), tk.StringVar()
@@ -165,6 +166,9 @@ class GUI:
 
     def _palette(self):
         return THEMES['dark' if self.dark_mode.get() else 'light']
+
+    def _asset_path(self, filename):
+        return (ROOT / filename) if (ROOT / filename).exists() else (BUNDLE_DIR / filename)
 
     def toggle_theme(self):
         self.dark_mode.set(not self.dark_mode.get())
@@ -386,10 +390,14 @@ class GUI:
     def active_lists(self):
         mode = MODES[self.mode_label.get()]
         if mode == 'el':
-            return [BUNDLE_DIR / 'bad_words_el.txt', BUNDLE_DIR / 'bad_words_greeklish.txt']
+            return [self._asset_path('bad_words_el.txt'), self._asset_path('bad_words_greeklish.txt')]
         if mode == 'en':
-            return [BUNDLE_DIR / 'bad_words_en.txt']
-        return [BUNDLE_DIR / 'bad_words_el.txt', BUNDLE_DIR / 'bad_words_en.txt', BUNDLE_DIR / 'bad_words_greeklish.txt']
+            return [self._asset_path('bad_words_en.txt')]
+        return [
+            self._asset_path('bad_words_el.txt'),
+            self._asset_path('bad_words_en.txt'),
+            self._asset_path('bad_words_greeklish.txt'),
+        ]
 
     def append(self, text):
         self.log.configure(state='normal')
@@ -522,7 +530,7 @@ class GUI:
         if models_exe.is_file():
             subprocess.Popen([str(models_exe)], cwd=str(ROOT))
         else:
-            script = BUNDLE_DIR / 'models_setup.py' if (BUNDLE_DIR / 'models_setup.py').exists() else ROOT / 'models_setup.py'
+            script = self._asset_path('models_setup.py')
             subprocess.Popen([sys.executable, str(script)], cwd=str(ROOT))
 
     def start(self):
@@ -582,6 +590,7 @@ class GUI:
         self.stop_btn.configure(state='normal')
         self.status.set('Starting…')
         self.status_detail.set(f'Loading {self.mode_label.get().split(" — ")[0]} model(s)')
+        self.vision_stopping.clear()
 
         if RiskManager is not None:
             try:
@@ -599,23 +608,33 @@ class GUI:
             self.risk_manager = None
 
         if self.vision_enabled.get() and self.risk_manager and VisionDetector is not None:
-            try:
-                model_file = str(YOLO_MODEL) if YOLO_MODEL.is_file() else 'yoloe-11l-seg.pt'
-                self.vision_detector = VisionDetector(
-                    risk_manager=self.risk_manager,
-                    camera_index=int(self.cam_index.get() or 0),
-                    model_path=model_file,
-                    persist_seconds=float(self.vision_persist.get() or 2.0),
-                )
-                threading.Thread(target=self.vision_detector.run, daemon=True).start()
-            except Exception as exc:
-                self.append(f'VISION init error: {exc}')
+            cam_idx = int(self.cam_index.get() or 0)
+            persist_sec = float(self.vision_persist.get() or 2.0)
+            model_file = str(YOLO_MODEL) if YOLO_MODEL.is_file() else 'yoloe-11l-seg.pt'
+            rm_ref = self.risk_manager
+
+            def run_vision():
+                try:
+                    self._emit_event('VISION: Loading YOLOE & NudeNet models…')
+                    det = VisionDetector(
+                        risk_manager=rm_ref,
+                        camera_index=cam_idx,
+                        model_path=model_file,
+                        persist_seconds=persist_sec,
+                    )
+                    self.vision_detector = det
+                    if not self.vision_stopping.is_set():
+                        det.run()
+                except Exception as exc:
+                    self._emit_event(f'VISION init error: {exc}')
+
+            threading.Thread(target=run_vision, daemon=True).start()
 
         if self.music_enabled.get() and self.risk_manager and MusicCopyrightDetector is not None:
             try:
                 loop_name = self.loopback_device.get()
                 loop_id = self.outputs.get(loop_name, out)
-                whitelist_file = BUNDLE_DIR / 'music_whitelist.txt' if (BUNDLE_DIR / 'music_whitelist.txt').exists() else ROOT / 'music_whitelist.txt'
+                whitelist_file = self._asset_path('music_whitelist.txt')
                 self.music_detector = MusicCopyrightDetector(
                     risk_manager=self.risk_manager,
                     loopback_device_id=loop_id,
@@ -693,6 +712,7 @@ class GUI:
                         self.profanity_60s.set(f'{val} / min')
                 elif kind == 'done':
                     self.censor = self.worker = None
+                    self.vision_stopping.set()
                     if self.vision_detector:
                         self.vision_detector.stop()
                         self.vision_detector = None
@@ -710,6 +730,7 @@ class GUI:
         self.root.after(150, self.poll)
 
     def stop(self):
+        self.vision_stopping.set()
         if self.censor:
             self.censor.stop()
         if self.vision_detector:

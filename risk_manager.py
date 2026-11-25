@@ -26,6 +26,25 @@ def pause_system_media():
 
 
 class RiskManager:
+    VIDEO_INPUT_KINDS = {
+        'dshow_input',
+        'v4l2_input',
+        'av_capture_input',
+        'av_capture_input_v2',
+        'ffmpeg_source',
+        'browser_source',
+        'window_capture',
+        'monitor_capture',
+        'game_capture',
+    }
+
+    AUDIO_OUTPUT_KINDS = {
+        'wasapi_output_capture',
+        'wasapi_process_output_capture',
+        'pulse_output_capture',
+        'coreaudio_output_capture',
+    }
+
     def __init__(
         self,
         log_dir,
@@ -64,13 +83,64 @@ class RiskManager:
             try:
                 self.obs_client = obs.ReqClient(host=obs_host, port=obs_port, password=obs_password, timeout=3)
                 self.emit(f'OBS: Connected ({obs_host}:{obs_port})')
+                self._discover_obs_sources()
                 self._ensure_obs_censor_ready()
             except Exception as exc:
                 self.emit(f'OBS: Not connected ({exc})')
 
+    def _discover_obs_sources(self):
+        """Auto-detects the active OBS camera/video source and desktop/music audio source names."""
+        if not self.obs_client:
+            return
+        with self.obs_lock:
+            try:
+                inputs = self.obs_client.get_input_list().inputs or []
+            except Exception as exc:
+                self.emit(f'OBS: Could not list inputs ({exc})')
+                return
+
+        names = [item.get('inputName', '') for item in inputs if item.get('inputName')]
+        if names:
+            self.emit(f'OBS: Available sources -> {", ".join(names)}')
+
+        # Resolve camera/video source
+        if self.cam_source not in names:
+            cam_candidates = [
+                item['inputName']
+                for item in inputs
+                if item.get('inputKind') in self.VIDEO_INPUT_KINDS
+                or any(k in item.get('inputName', '').lower() for k in ('cam', 'video', 'face', 'obs'))
+            ]
+            if cam_candidates:
+                self.cam_source = cam_candidates[0]
+                self.emit(f'OBS: Auto-selected camera source "{self.cam_source}"')
+            else:
+                self.cam_source = ''
+                self.emit('OBS: No webcam/video source found in OBS — Vision will use local camera')
+
+        # Resolve desktop/music audio source (avoid selecting mic input captures)
+        if self.music_source not in names:
+            named_music = [
+                item['inputName']
+                for item in inputs
+                if any(k in item.get('inputName', '').lower() for k in ('music', 'desktop', 'spotify', 'browser', 'game'))
+                and 'input' not in item.get('inputName', '').lower()
+            ]
+            output_captures = [
+                item['inputName']
+                for item in inputs
+                if item.get('inputKind') in self.AUDIO_OUTPUT_KINDS
+            ]
+            audio_candidates = named_music or output_captures
+            if audio_candidates:
+                self.music_source = audio_candidates[0]
+                self.emit(f'OBS: Auto-selected audio source "{self.music_source}"')
+            else:
+                self.music_source = ''
+
     def _ensure_obs_censor_ready(self):
         """Auto-creates a built-in Color Correction blackout/blur filter if missing so no plugin is required."""
-        if not self.obs_client:
+        if not self.obs_client or not self.cam_source:
             return
         with self.obs_lock:
             try:
@@ -89,24 +159,24 @@ class RiskManager:
                 self.emit(f'OBS: Filter check skipped ({exc})')
 
     def get_obs_frame_base64(self):
-            """Grabs a live 640x360 frame directly from OBS so small objects like vapes are sharp enough to detect."""
-            if not self.obs_client:
+        """Grabs a live 640x360 frame directly from OBS so small objects like vapes are sharp enough to detect."""
+        if not self.obs_client or not self.cam_source:
+            return None
+        with self.obs_lock:
+            try:
+                resp = self.obs_client.get_source_screenshot(
+                    name=self.cam_source,
+                    img_format='jpg',
+                    width=640,
+                    height=360,
+                    quality=80,
+                )
+                return resp.image_data
+            except Exception:
                 return None
-            with self.obs_lock:
-                try:
-                    resp = self.obs_client.get_source_screenshot(
-                        name=self.cam_source,
-                        img_format='jpg',
-                        width=640,
-                        height=360,
-                        quality=80,
-                    )
-                    return resp.image_data
-                except Exception:
-                    return None
 
     def set_camera_censor(self, enabled: bool):
-        if not self.obs_client or self.cam_censored == enabled:
+        if not self.obs_client or not self.cam_source or self.cam_censored == enabled:
             return
         with self.obs_lock:
             try:
@@ -169,7 +239,7 @@ class RiskManager:
         if action == 'STOP_MUSIC':
             if pause_system_media():
                 actions.append('PAUSED_MEDIA_PLAYER')
-            if self.obs_client:
+            if self.obs_client and self.music_source:
                 with self.obs_lock:
                     try:
                         self.obs_client.set_input_mute(self.music_source, True)

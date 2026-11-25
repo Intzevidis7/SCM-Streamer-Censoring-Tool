@@ -7,6 +7,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import torch
 from ultralytics import YOLO
 
 try:
@@ -16,7 +17,10 @@ except Exception:
 
 
 def resource_path(relative_path: str) -> str:
-    base = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent))
+    exe_dir = Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else Path(__file__).resolve().parent
+    if (exe_dir / relative_path).is_file():
+        return str(exe_dir / relative_path)
+    base = Path(getattr(sys, '_MEIPASS', exe_dir))
     return str(base / relative_path)
 
 
@@ -69,11 +73,12 @@ class VisionDetector:
 
     ALL_PROMPTS = list(RESTRICTED_THRESHOLDS.keys()) + SAFE_DISTRACTORS
 
-    def __init__(self, risk_manager, camera_index=0, model_path='custom_guard_world.pt', persist_seconds=0.6, fps=5.0):
+    def __init__(self, risk_manager, camera_index=0, model_path='yoloe-11l-seg.pt', persist_seconds=0.6, fps=5.0):
         self.risk = risk_manager
         self.camera_index = int(camera_index)
-        resolved = Path(model_path) if Path(model_path).is_file() else Path(resource_path('custom_guard_world.pt'))
+        resolved = Path(model_path) if Path(model_path).is_file() else Path(resource_path('yoloe-11l-seg.pt'))
         self.model = YOLO(str(resolved))
+        self._configure_open_vocab_prompts()
         self.nude_detector = self._init_nude_detector()
         self.nude_interval = 1.0
         self._last_nude_check = 0.0
@@ -84,6 +89,30 @@ class VisionDetector:
         self.last_seen = {}
         self.clean_since = None
         self._last_debug_log = 0.0
+
+    def _configure_open_vocab_prompts(self):
+        """Registers precomputed open-vocabulary text embeddings on YOLOE (zero runtime downloads)."""
+        try:
+            cache_path = Path(resource_path('yoloe_text_pe.pt'))
+            if cache_path.is_file():
+                cached = torch.load(str(cache_path), map_location='cpu', weights_only=True)
+                prompts = cached.get('prompts', self.ALL_PROMPTS)
+                pe = cached['pe']
+                self.model.set_classes(prompts, pe)
+                return
+
+            if hasattr(self.model, 'get_text_pe'):
+                pe = self.model.get_text_pe(self.ALL_PROMPTS)
+                self.model.set_classes(self.ALL_PROMPTS, pe)
+                try:
+                    exe_dir = Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else Path(__file__).resolve().parent
+                    torch.save({'prompts': self.ALL_PROMPTS, 'pe': pe}, str(exe_dir / 'yoloe_text_pe.pt'))
+                except Exception:
+                    pass
+            elif hasattr(self.model, 'set_classes'):
+                self.model.set_classes(self.ALL_PROMPTS)
+        except Exception as exc:
+            self.risk.emit(f'VISION: Text prompt setup warning ({exc})')
 
     def _init_nude_detector(self):
         if NudeDetector is None:
@@ -128,17 +157,23 @@ class VisionDetector:
         arr = np.frombuffer(raw, dtype=np.uint8)
         return cv2.imdecode(arr, cv2.IMREAD_COLOR)
 
+    def _open_local_camera(self):
+        cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
+        if not cap.isOpened():
+            cap = cv2.VideoCapture(self.camera_index)
+        return cap if cap.isOpened() else None
+
     def run(self):
         cap = None
-        use_obs = self.risk.obs_client is not None
+        use_obs = self.risk.obs_client is not None and bool(self.risk.cam_source)
         if use_obs:
             self.risk.emit(f'VISION: Monitoring OBS "{self.risk.cam_source}" (YOLOE + NudeNet)')
         else:
-            cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
-            if not cap.isOpened():
-                self.risk.emit('VISION: Could not open webcam (connect OBS WebSocket to read active OBS camera)')
+            cap = self._open_local_camera()
+            if cap is None:
+                self.risk.emit(f'VISION: Could not open local camera #{self.camera_index} (check Cam ID or OBS source)')
                 return
-            self.risk.emit(f'VISION: Monitoring local camera #{self.camera_index}')
+            self.risk.emit(f'VISION: Monitoring local camera #{self.camera_index} (YOLOE + NudeNet)')
 
         empty_frames = 0
         safe_set = set(self.SAFE_DISTRACTORS)
@@ -155,8 +190,14 @@ class VisionDetector:
 
                 if frame is None:
                     empty_frames += 1
-                    if empty_frames == 10:
-                        self.risk.emit(f'VISION: No frames received from OBS source "{self.risk.cam_source}" — check exact OBS source name!')
+                    if empty_frames == 8 and use_obs:
+                        self.risk.emit(f'VISION: No frames from OBS "{self.risk.cam_source}" — falling back to local camera #{self.camera_index}')
+                        use_obs = False
+                        cap = self._open_local_camera()
+                        if cap is None:
+                            self.risk.emit(f'VISION: Local camera #{self.camera_index} unavailable too — stopping Vision')
+                            return
+                        empty_frames = 0
                     time.sleep(0.2)
                     continue
                 empty_frames = 0
