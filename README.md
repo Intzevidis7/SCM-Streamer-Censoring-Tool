@@ -1,4 +1,3 @@
-@'
 # Streamer Censoring Multitool (SCM)
 
 ![SCM Logo](assets/scm_logo.svg)
