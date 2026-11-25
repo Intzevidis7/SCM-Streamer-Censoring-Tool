@@ -16,17 +16,17 @@ if ($LASTEXITCODE -ne 0 -or -not $voskDir -or -not (Test-Path -LiteralPath $vosk
 $voskDll = Join-Path $voskDir 'libvosk.dll'
 if (-not (Test-Path -LiteralPath $voskDll)) { throw "Missing Vosk DLL: $voskDll" }
 Write-Host "Bundling Vosk DLL: $voskDll"
-& $python -m PyInstaller --clean --noconfirm --onedir --windowed --name BadWordBeep --icon "$PSScriptRoot\app.ico" --add-binary "${voskDll}:vosk" --hidden-import keyword_audio_detector --collect-all torch --collect-all transformers app.py
+& $python -m PyInstaller --clean --noconfirm --onedir --windowed --name SCM --icon "$PSScriptRoot\app.ico" --add-binary "${voskDll}:vosk" --hidden-import keyword_audio_detector --collect-all torch --collect-all transformers app.py
 if ($LASTEXITCODE -ne 0) { throw 'GUI build failed.' }
-$bundledDll = Join-Path $PSScriptRoot 'dist\BadWordBeep\_internal\vosk\libvosk.dll'
+$bundledDll = Join-Path $PSScriptRoot 'dist\SCM\_internal\vosk\libvosk.dll'
 if (-not (Test-Path -LiteralPath $bundledDll)) { throw "Bundled DLL not found: $bundledDll" }
-& $python -m PyInstaller --clean --noconfirm --onefile --console --name BadWordBeep-Models --icon "$PSScriptRoot\app.ico" models_setup.py
+& $python -m PyInstaller --clean --noconfirm --onefile --console --name SCM-Models --icon "$PSScriptRoot\app.ico" models_setup.py
 if ($LASTEXITCODE -ne 0) { throw 'Model downloader build failed.' }
-Copy-Item -LiteralPath 'dist\BadWordBeep-Models.exe' -Destination 'dist\BadWordBeep\BadWordBeep-Models.exe' -Force
-foreach ($wordList in 'bad_words.txt','bad_words_el.txt','bad_words_en.txt','bad_words_greeklish.txt') { Copy-Item -LiteralPath $wordList -Destination (Join-Path 'dist\BadWordBeep' $wordList) -Force }
+Copy-Item -LiteralPath 'dist\SCM-Models.exe' -Destination 'dist\SCM\SCM-Models.exe' -Force
+foreach ($wordList in 'bad_words.txt','bad_words_el.txt','bad_words_en.txt','bad_words_greeklish.txt') { Copy-Item -LiteralPath $wordList -Destination (Join-Path 'dist\SCM' $wordList) -Force }
 $v4Checkpoint = Join-Path $PSScriptRoot 'keyword_lab\runs\wordfocused_xlsr_v4_context\model.pt'
 if (-not (Test-Path -LiteralPath $v4Checkpoint)) { throw "Missing trained v4 checkpoint: $v4Checkpoint" }
-$aiModelDir = Join-Path $PSScriptRoot 'dist\BadWordBeep\models\keyword_v4'
+$aiModelDir = Join-Path $PSScriptRoot 'dist\SCM\models\keyword_v4'
 New-Item -ItemType Directory -Force -Path $aiModelDir | Out-Null
 Copy-Item -LiteralPath $v4Checkpoint -Destination (Join-Path $aiModelDir 'model.pt') -Force
 $compilerPath = $null; $compiler = Get-Command ISCC.exe -ErrorAction SilentlyContinue
@@ -38,4 +38,4 @@ if (-not $compilerPath) {
 if (-not $compilerPath) { throw 'Inno Setup ISCC.exe not found. Install Inno Setup 6 or 7.' }
 & $compilerPath 'installer.iss'
 if ($LASTEXITCODE -ne 0) { throw 'Installer compile failed.' }
-Write-Host 'Complete: release\BadWordBeep-Setup.exe and dist\BadWordBeep\BadWordBeep.exe'
+Write-Host 'Complete: release\SCM-Setup.exe and dist\SCM\SCM.exe'

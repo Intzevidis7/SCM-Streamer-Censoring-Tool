@@ -1,6 +1,9 @@
-; Bad Word Beep — Created by Intzevidis7
+; Streamer Censoring Multitool (SCM) — Created by Intzevidis7
 ; GitHub: https://github.com/Intzevidis7
-#define MyAppName "Bad Word Beep"
+#define MyAppName "Streamer Censoring Multitool"
+#define MyAppShortName "SCM"
+#define MyAppExeName "SCM.exe"
+#define MyAppModelsExeName "SCM-Models.exe"
 #define MyAppVersion "0.4.0"
 
 [Setup]
@@ -9,30 +12,30 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher=Intzevidis7
 AppPublisherURL=https://github.com/Intzevidis7
-DefaultDirName={localappdata}\BadWordBeep
+DefaultDirName={localappdata}\{#MyAppShortName}
 SetupIconFile=app.ico
 DefaultGroupName={#MyAppName}
 OutputDir=release
-OutputBaseFilename=BadWordBeep-Setup
+OutputBaseFilename={#MyAppShortName}-Setup
 Compression=lzma2
 SolidCompression=yes
 PrivilegesRequired=lowest
-UninstallDisplayIcon={app}\BadWordBeep.exe
+UninstallDisplayIcon={app}\{#MyAppExeName}
 
 [Files]
-Source: "dist\BadWordBeep\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\{#MyAppShortName}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "LICENSE.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "licenses\*"; DestDir: "{app}\licenses"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\Bad Word Beep"; Filename: "{app}\BadWordBeep.exe"
-Name: "{autodesktop}\Bad Word Beep"; Filename: "{app}\BadWordBeep.exe"; Tasks: desktopicon
+Name: "{group}\{#MyAppName} ({#MyAppShortName})"; Filename: "{app}\{#MyAppExeName}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"
 
 [Run]
-Filename: "{app}\BadWordBeep-Models.exe"; Description: "Download Greek and English Vosk models (internet required; several GB of free disk space recommended)"; Flags: postinstall skipifsilent
-Filename: "{app}\BadWordBeep.exe"; Description: "Open Bad Word Beep"; Flags: postinstall nowait skipifsilent unchecked
+Filename: "{app}\{#MyAppModelsExeName}"; Description: "Download Greek and English Vosk models (internet required; several GB of free disk space recommended)"; Flags: postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "Open {#MyAppName} ({#MyAppShortName})"; Flags: postinstall nowait skipifsilent unchecked

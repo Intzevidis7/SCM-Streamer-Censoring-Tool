@@ -2,7 +2,7 @@
 #
 #   I N T Z E V I D I S 7
 #
-#   Bad Word Beep — AI Streamer Multi-Tool & OBS Guard
+#   Streamer Censoring Multitool (SCM) — AI Streamer Guard
 #   Created by Intzevidis7
 #   GitHub: https://github.com/Intzevidis7
 #

@@ -1,12 +1,12 @@
-BadWordBEEP — Custom Use License
+Streamer Censoring Multitool (SCM) — Custom Use License
 
 Copyright (c) 2026 Intzevidis7.
 All rights reserved.
 
 1. Permitted Use
 
-You may download and run an official, unmodified release of BadWordBEEP
-for personal or streaming use.
+You may download and run an official, unmodified release of Streamer
+Censoring Multitool (SCM) for personal or streaming use.
 
 2. Restrictions
 
@@ -30,7 +30,7 @@ d) use the Software, its name, logo, interface, documentation, or
 The following credit must remain visible in the application’s About
 section, installer, and official documentation:
 
-    BadWordBEEP
+    Streamer Censoring Multitool (SCM)
     Created by Intzevidis7
     https://github.com/Intzevidis7
 
@@ -42,8 +42,8 @@ must be made under a separate contributor agreement.
 
 5. Third-Party Software
 
-BadWordBEEP may include third-party components. Those components remain
-subject to their own licenses and notices.
+Streamer Censoring Multitool (SCM) may include third-party components.
+Those components remain subject to their own licenses and notices.
 
 6. No Warranty
 
