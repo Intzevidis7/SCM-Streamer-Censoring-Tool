@@ -24,11 +24,20 @@ if (-not (Test-Path -LiteralPath $bundledDll)) { throw "Bundled DLL not found: $
 if ($LASTEXITCODE -ne 0) { throw 'Model downloader build failed.' }
 Copy-Item -LiteralPath 'dist\SCM-Models.exe' -Destination 'dist\SCM\SCM-Models.exe' -Force
 foreach ($wordList in 'bad_words.txt','bad_words_el.txt','bad_words_en.txt','bad_words_greeklish.txt') { Copy-Item -LiteralPath $wordList -Destination (Join-Path 'dist\SCM' $wordList) -Force }
-$v4Checkpoint = Join-Path $PSScriptRoot 'keyword_lab\runs\wordfocused_xlsr_v4_context\model.pt'
-if (-not (Test-Path -LiteralPath $v4Checkpoint)) { throw "Missing trained v4 checkpoint: $v4Checkpoint" }
-$aiModelDir = Join-Path $PSScriptRoot 'dist\SCM\models\keyword_v4'
-New-Item -ItemType Directory -Force -Path $aiModelDir | Out-Null
-Copy-Item -LiteralPath $v4Checkpoint -Destination (Join-Path $aiModelDir 'model.pt') -Force
+
+$v4Candidates = @(
+    (Join-Path $PSScriptRoot 'keyword_lab\runs\wordfocused_xlsr_v4_context\model.pt'),
+    (Join-Path $PSScriptRoot 'models\keyword_v4\model.pt')
+)
+$v4Checkpoint = $v4Candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+if ($v4Checkpoint) {
+    $aiModelDir = Join-Path $PSScriptRoot 'dist\SCM\models\keyword_v4'
+    New-Item -ItemType Directory -Force -Path $aiModelDir | Out-Null
+    Copy-Item -LiteralPath $v4Checkpoint -Destination (Join-Path $aiModelDir 'model.pt') -Force
+} else {
+    Write-Warning 'Optional v4 AI audio checkpoint (model.pt) not found; skipping bundle.'
+}
+
 $compilerPath = $null; $compiler = Get-Command ISCC.exe -ErrorAction SilentlyContinue
 if ($compiler) { $compilerPath = $compiler.Source }
 if (-not $compilerPath) {

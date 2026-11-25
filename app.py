@@ -17,6 +17,7 @@ import json
 import os
 import queue
 import re
+import subprocess
 import sys
 import threading
 import webbrowser
@@ -42,18 +43,18 @@ try:
 except ImportError:
     MusicCopyrightDetector = None
 
-# Writable directory next to BadWordBeep.exe (for settings.json & logs)
+# Writable directory next to SCM.exe (for settings.json & logs)
 ROOT = Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else Path(__file__).resolve().parent
 # Read-only bundled assets directory (_internal when frozen, project root when running from source)
 BUNDLE_DIR = Path(getattr(sys, '_MEIPASS', ROOT))
 
-MODELS = BUNDLE_DIR / 'models'
+MODELS = (ROOT / 'models') if (ROOT / 'models').exists() else (BUNDLE_DIR / 'models' if (BUNDLE_DIR / 'models').exists() else ROOT / 'models')
 LOGS_DIR = ROOT / 'logs'
 CONFIG = ROOT / 'settings.json'
 GREEK_MODEL = MODELS / 'vosk-model-el-gr-0.7'
 ENGLISH_MODEL = MODELS / 'vosk-model-small-en-us-0.15'
 AUDIO_KEYWORD_MODEL = MODELS / 'keyword_v4'
-YOLO_MODEL = BUNDLE_DIR / 'custom_guard_world.pt'
+YOLO_MODEL = (ROOT / 'yoloe-11l-seg.pt') if (ROOT / 'yoloe-11l-seg.pt').exists() else (BUNDLE_DIR / 'yoloe-11l-seg.pt')
 
 THEMES = {
     'light': {
@@ -106,7 +107,7 @@ MODES = {
 class GUI:
     def __init__(self, root):
         self.root = root
-        root.title('Bad Word Beep — AI Streamer Guard')
+        root.title('Streamer Censoring Multitool (SCM) — AI Streamer Guard')
         try:
             ico = BUNDLE_DIR / 'app.ico' if (BUNDLE_DIR / 'app.ico').exists() else ROOT / 'app.ico'
             root.iconbitmap(str(ico))
@@ -236,8 +237,8 @@ class GUI:
         header.pack(fill='x', pady=(0, 12))
         left_head = ttk.Frame(header, style='App.TFrame')
         left_head.pack(side='left', fill='x', expand=True)
-        ttk.Label(left_head, text='Bad Word Beep — AI Streamer Guard', style='Title.TLabel').pack(anchor='w')
-        ttk.Label(left_head, text='Pre-moderation multi-tool: speech censor, webcam substance guard, DMCA music monitor & OBS bridge', style='Subtitle.TLabel').pack(anchor='w', pady=(2, 0))
+        ttk.Label(left_head, text='Streamer Censoring Multitool (SCM)', style='Title.TLabel').pack(anchor='w')
+        ttk.Label(left_head, text='Pre-moderation multi-tool: speech censor, webcam substance & exposure guard, music monitor & OBS bridge', style='Subtitle.TLabel').pack(anchor='w', pady=(2, 0))
         github_label = ttk.Label(left_head, text='Created by Intzevidis7', style='AuthorLink.TLabel', cursor='hand2')
         github_label.pack(anchor='w', pady=(3, 0))
         github_label.bind('<Button-1>', lambda event: webbrowser.open_new('https://github.com/Intzevidis7'))
@@ -369,16 +370,16 @@ class GUI:
 
     def show_about(self):
         messagebox.showinfo(
-            'About / Credits — Bad Word Beep',
-            'Bad Word Beep — AI Streamer Multi-Tool\n'
+            'About / Credits — Streamer Censoring Multitool (SCM)',
+            'Streamer Censoring Multitool (SCM) — AI Streamer Guard\n'
             'Created by Intzevidis7\n'
             '© 2026 Intzevidis7. All rights reserved.\n\n'
             'GitHub: https://github.com/Intzevidis7\n\n'
             'Third-party acknowledgments\n'
             'Vosk — Alpha Cephei\n'
-            'Ultralytics YOLOv8 / OpenCV\n'
+            'Ultralytics YOLOE / NudeNet / OpenCV\n'
             'OBS WebSocket (obsws-python)\n'
-            'python-sounddevice and PortAudio',
+            'python-sounddevice, pyaudiowpatch, and PortAudio',
             parent=self.root,
         )
 
@@ -516,6 +517,14 @@ class GUI:
         else:
             self.events.put(('log', str(payload)))
 
+    def _launch_model_downloader(self):
+        models_exe = ROOT / 'SCM-Models.exe'
+        if models_exe.is_file():
+            subprocess.Popen([str(models_exe)], cwd=str(ROOT))
+        else:
+            script = BUNDLE_DIR / 'models_setup.py' if (BUNDLE_DIR / 'models_setup.py').exists() else ROOT / 'models_setup.py'
+            subprocess.Popen([sys.executable, str(script)], cwd=str(ROOT))
+
     def start(self):
         if self.worker and self.worker.is_alive():
             return
@@ -528,7 +537,11 @@ class GUI:
             needed.append(('English', ENGLISH_MODEL))
         for name, path in needed:
             if not (path / 'am' / 'final.mdl').is_file():
-                messagebox.showerror(f'{name} model missing', f'Expected model at:\n{path}\n\nVerify bundled models folder.')
+                if messagebox.askyesno(
+                    f'{name} model missing',
+                    f'Expected model at:\n{path}\n\nDownload the Vosk speech models now?',
+                ):
+                    self._launch_model_downloader()
                 return
         lists = self.active_lists()
         missing = [p.name for p in lists if not p.is_file()]
@@ -587,7 +600,7 @@ class GUI:
 
         if self.vision_enabled.get() and self.risk_manager and VisionDetector is not None:
             try:
-                model_file = str(YOLO_MODEL) if YOLO_MODEL.is_file() else 'custom_guard_world.pt'
+                model_file = str(YOLO_MODEL) if YOLO_MODEL.is_file() else 'yoloe-11l-seg.pt'
                 self.vision_detector = VisionDetector(
                     risk_manager=self.risk_manager,
                     camera_index=int(self.cam_index.get() or 0),
