@@ -1,5 +1,5 @@
 # ============================================================
-#  SCM — censor engine
+#  Streamer Censoring Multitool (SCM) — AI Streamer Guard
 #  Created by Intzevidis7
 #  GitHub: https://github.com/Intzevidis7
 #
