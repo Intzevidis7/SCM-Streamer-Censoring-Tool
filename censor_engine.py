@@ -1,5 +1,5 @@
 # ============================================================
-#  Bad Word Beep — censor engine
+#  SCM — censor engine
 #  Created by Intzevidis7
 #  GitHub: https://github.com/Intzevidis7
 #
